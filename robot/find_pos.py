@@ -1,10 +1,14 @@
 import urx
-from .secrets_config import get_robot_ip
+
+try:
+    from . import my_secrets
+except ImportError:
+    my_secrets = None
 
 class FindPos:
     def __init__(self, robot_ip=None):
         if robot_ip is None:
-            robot_ip = get_robot_ip()
+            robot_ip = getattr(my_secrets, 'UR_ROBOT_IP', "192.168.254.19") if my_secrets else "192.168.254.19"
         self.rob = urx.Robot(robot_ip)
 
 
@@ -40,16 +44,18 @@ class FindPos:
     
 
 # Example usage (uncommented):
-# rob = urx.Robot(get_robot_ip()) 
+# robot_ip = getattr(my_secrets, 'UR_ROBOT_IP', "192.168.254.19") if my_secrets else "192.168.254.19"
+# rob = urx.Robot(robot_ip) 
 # l = rob.getl()
 # j = rob.getj()
 # print(f'"l": [{", ".join(f"{x:.4f}" for x in l)}],\n  "j": [{", ".join(f"{x:.4f}" for x in j)}]')
 
 
 #Socket settings example
-# from .secrets_config import get_robot_ip, get_gripper_port
-# HOST = get_robot_ip()  # Robot's IP 
-# PORT = get_gripper_port()  # PORT used by robotiq gripper
+# robot_ip = getattr(my_secrets, 'UR_ROBOT_IP', "192.168.254.19") if my_secrets else "192.168.254.19"
+# gripper_port = getattr(my_secrets, 'GRIPPER_PORT', 63352) if my_secrets else 63352
+# HOST = robot_ip  # Robot's IP 
+# PORT = gripper_port  # PORT used by robotiq gripper
 
 # #Socket communication
 # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

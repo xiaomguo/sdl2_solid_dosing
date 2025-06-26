@@ -3,18 +3,22 @@ import socket
 import time
 import json
 from urx.urrobot import RobotException
-from .secrets_config import get_robot_ip, get_gripper_port
+
+try:
+    from . import my_secrets
+except ImportError:
+    my_secrets = None
 
 class URController:
     def __init__(self,
                  ur_ip=None,
                  gripper_port=None,
                  location_file="ur3_positions.json"):
-        # Use secrets configuration with fallback to provided values
+        # Use values from my_secrets if available, otherwise use defaults
         if ur_ip is None:
-            ur_ip = get_robot_ip()
+            ur_ip = getattr(my_secrets, 'UR_ROBOT_IP', "192.168.254.19") if my_secrets else "192.168.254.19"
         if gripper_port is None:
-            gripper_port = get_gripper_port()
+            gripper_port = getattr(my_secrets, 'GRIPPER_PORT', 63352) if my_secrets else 63352
         try:
             self.rob = urx.Robot(ur_ip)
             print("UR Robot connected!")

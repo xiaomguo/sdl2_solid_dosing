@@ -955,10 +955,13 @@ class MTXPRBalance:
 
 
 if __name__ == '__main__':
-    from .config import get_balance_ip, get_balance_password
+    try:
+        from robot import my_secrets
+    except ImportError:
+        my_secrets = None
     
-    BALANCE_IP = get_balance_ip()
-    BALANCE_PASSWORD = get_balance_password()
+    BALANCE_IP = getattr(my_secrets, 'BALANCE_IP', '192.168.254.83') if my_secrets else '192.168.254.83'
+    BALANCE_PASSWORD = getattr(my_secrets, 'BALANCE_PASSWORD', 'PASSWORD') if my_secrets else 'PASSWORD'
 
     # More detailed logging for debugging
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

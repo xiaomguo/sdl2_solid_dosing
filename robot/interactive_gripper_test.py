@@ -1,12 +1,16 @@
 import socket
 import time
-from .secrets_config import get_robot_ip, get_gripper_port
+
+try:
+    from . import my_secrets
+except ImportError:
+    my_secrets = None
 
 def send_gripper_command(command, ip=None, port=None):
     if ip is None:
-        ip = get_robot_ip()
+        ip = getattr(my_secrets, 'UR_ROBOT_IP', "192.168.254.19") if my_secrets else "192.168.254.19"
     if port is None:
-        port = get_gripper_port()
+        port = getattr(my_secrets, 'GRIPPER_PORT', 63352) if my_secrets else 63352
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.settimeout(5)
         try:
