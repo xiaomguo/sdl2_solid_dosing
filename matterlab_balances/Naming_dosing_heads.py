@@ -1,11 +1,9 @@
 from mt_balance import MTXPRBalance
 from mt_balance import DosingHeadType
+from .config import get_balance_ip, get_balance_password
 import time
 
-BALANCE_IP = "192.168.254.83"
-BALANCE_PASSWORD = "PASSWORD"
-
-balance = MTXPRBalance (host = BALANCE_IP, password = BALANCE_PASSWORD)
+balance = MTXPRBalance(host=get_balance_ip(), password=get_balance_password())
 
 # Need to detect automatic dosing head id as next iteration
 

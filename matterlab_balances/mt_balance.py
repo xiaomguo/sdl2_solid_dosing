@@ -149,7 +149,7 @@ class MTXPRBalance:
 
 
     def __init__(self,
-                 host: str = "192.168.1.1", 
+                 host: str = "192.168.1.100",  # Default placeholder - configure in my_secrets.py 
                  port: int = 8002, 
                  api_path: str = 'MT/Laboratory/Balance/XprXsr/V03/MT', 
                  wsdl_template_name: str = DEFAULT_WSDL_TEMPLATE_NAME,
@@ -955,8 +955,10 @@ class MTXPRBalance:
 
 
 if __name__ == '__main__':
-    BALANCE_IP = "192.168.254.83"
-    BALANCE_PASSWORD = "PASSWORD"
+    from .config import get_balance_ip, get_balance_password
+    
+    BALANCE_IP = get_balance_ip()
+    BALANCE_PASSWORD = get_balance_password()
 
     # More detailed logging for debugging
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

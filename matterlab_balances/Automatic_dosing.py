@@ -4,12 +4,10 @@ from mt_balance import MTXPRBalance
 from mt_balance import MTXPRBalanceDoors
 from mt_balance import MTXPRBalanceDosingError
 from mt_balance import WeighingCaptureMode
+from .config import get_balance_ip, get_balance_password
 import time
 
-BALANCE_IP = "192.168.254.83"
-BALANCE_PASSWORD = "PASSWORD"
-
-balance = MTXPRBalance (host = BALANCE_IP, password = BALANCE_PASSWORD)
+balance = MTXPRBalance(host=get_balance_ip(), password=get_balance_password())
 
 # Get input from the user
 

@@ -1,8 +1,11 @@
 import urx
+from .secrets_config import get_robot_ip
 
 class FindPos:
-    def __init__(self):
-        self.rob = urx.Robot("192.168.254.19")
+    def __init__(self, robot_ip=None):
+        if robot_ip is None:
+            robot_ip = get_robot_ip()
+        self.rob = urx.Robot(robot_ip)
 
 
     def print_lj(self):
@@ -36,15 +39,17 @@ class FindPos:
 
     
 
-# rob = urx.Robot("192.168.254.19")
+# Example usage (uncommented):
+# rob = urx.Robot(get_robot_ip()) 
 # l = rob.getl()
 # j = rob.getj()
 # print(f'"l": [{", ".join(f"{x:.4f}" for x in l)}],\n  "j": [{", ".join(f"{x:.4f}" for x in j)}]')
 
 
-#Socket setingspy
-# HOST="192.168.254.19" #replace by the IP address of the UR robot
-# PORT=63352 #PORT used by robotiq gripper
+#Socket settings example
+# from .secrets_config import get_robot_ip, get_gripper_port
+# HOST = get_robot_ip()  # Robot's IP 
+# PORT = get_gripper_port()  # PORT used by robotiq gripper
 
 # #Socket communication
 # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
