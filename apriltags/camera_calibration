@@ -8,9 +8,6 @@ import cv2
 from typing import List, Tuple
 import matplotlib.pyplot as plt
 
-# ---------------------------
-# 1) SETUP
-# ---------------------------
 
 test = True  # set to False if you want Colab-style manual uploads
 
@@ -60,9 +57,6 @@ print("\nFound images:")
 for p in image_paths:
     print(p)
 
-# ---------------------------
-# 2) CAMERA CALIBRATION
-# ---------------------------
 
 # Calibration checkerboard parameters
 rows = 6   # inner corners in vertical direction
