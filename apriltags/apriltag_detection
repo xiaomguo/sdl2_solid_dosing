@@ -1,0 +1,90 @@
+test = True
+from pupil_apriltags import Detector
+
+if test:
+    import urllib.request
+    apriltag_url = "https://raw.githubusercontent.com/AccelerationConsortium/ac-training-lab/main/src/ac_training_lab/apriltag_demo/apriltag_test.jpg"
+    apriltag_path = "apriltag_test.jpg"
+    urllib.request.urlretrieve(apriltag_url, apriltag_path)
+elif IN_COLAB:
+    from google.colab import files
+    uploaded = files.upload()
+    if len(uploaded) == 0:
+        raise ValueError("No image uploaded.")
+    apriltag_filename = next(iter(uploaded))
+    apriltag_path = os.path.join("/content", apriltag_filename)
+else:
+    apriltag_path = input("Enter the path to the AprilTag image: ")
+    if not os.path.exists(apriltag_path):
+        raise ValueError(f"File {apriltag_path} does not exist.")
+    apriltag_path = os.path.abspath(apriltag_path)
+
+# @title AprilTag Detection
+# @markdown Configure detection parameters and run detection on the image.
+
+families = "tagStandard41h12"  # @param ["tag16h5", "tag25h9", "tag36h11", "tagCircle21h7", "tagCircle49h12", "tagCustom48h12", "tagStandard41h12", "tagStandard52h13"]
+tagsize_mm = 45 # @param {type:"number"}
+tagsize_meters = tagsize_mm / 1000
+
+import cv2
+import numpy as np
+from pupil_apriltags import Detector
+from scipy.spatial.transform import Rotation as R
+import matplotlib.pyplot as plt
+
+image = cv2.imread(apriltag_path, cv2.IMREAD_GRAYSCALE)
+if image is None:
+    raise ValueError(f"Failed to load image at {apriltag_path}")
+
+camera_params = np.load("camera_params.npy")
+
+at_detector = Detector(
+    families=families,
+    nthreads=1,
+    quad_decimate=1.0,
+    quad_sigma=0.0,
+    refine_edges=1,
+    decode_sharpening=0.25,
+    debug=0
+)
+
+detections = at_detector.detect(
+    image,
+    estimate_tag_pose=True,
+    camera_params=camera_params,
+    tag_size=tagsize_meters
+)
+
+print(f"Found {len(detections)} tags")
+
+for det in detections:
+    tag_id = det.tag_id
+    center = det.center
+    corners = det.corners.astype(int)
+
+    cv2.polylines(image, [corners], True, 255, 2)
+    cx, cy = map(int, center)
+    cv2.circle(image, (cx, cy), 4, 255, -1)
+    cv2.putText(image, str(tag_id), (cx, cy - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255, 1)
+
+    print(f"\nTag ID: {tag_id}")
+    print(f"  Center: {center}")
+    print(f"  Corners: {det.corners}")
+
+    if det.pose_t is not None:
+        t = det.pose_t.flatten()
+        print(f"  Translation (x, y, z): {t}")
+
+        distance_cm = np.linalg.norm(t) * 100
+        print(f"  Distance from camera: {distance_cm:.2f} centimeters")
+
+        euler = R.from_matrix(det.pose_R).as_euler('xyz', degrees=True)
+        roll, pitch, yaw = euler
+        print(f"  Roll: {roll:.2f}°, Pitch: {pitch:.2f}°, Yaw: {yaw:.2f}°")
+    else:
+        print("No pose estimated (pose_t is None)")
+
+plt.imshow(image, cmap='gray')
+plt.title("AprilTag Detection")
+plt.show()
+
