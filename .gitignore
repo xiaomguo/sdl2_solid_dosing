@@ -56,3 +56,6 @@ venv*/
 .python-version
 
 robot/my_secrets.py
+
+# Calibration output
+camera_params.npy
