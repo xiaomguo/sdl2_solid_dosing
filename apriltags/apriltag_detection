@@ -1,18 +1,19 @@
+import cv2
+import numpy as np
+import os
+from pupil_apriltags import Detector
+from scipy.spatial.transform import Rotation as R
+import matplotlib.pyplot as plt
+
 test = True
 from pupil_apriltags import Detector
 
+# Download test image
 if test:
     import urllib.request
     apriltag_url = "https://raw.githubusercontent.com/AccelerationConsortium/ac-training-lab/main/src/ac_training_lab/apriltag_demo/apriltag_test.jpg"
     apriltag_path = "apriltag_test.jpg"
     urllib.request.urlretrieve(apriltag_url, apriltag_path)
-elif IN_COLAB:
-    from google.colab import files
-    uploaded = files.upload()
-    if len(uploaded) == 0:
-        raise ValueError("No image uploaded.")
-    apriltag_filename = next(iter(uploaded))
-    apriltag_path = os.path.join("/content", apriltag_filename)
 else:
     apriltag_path = input("Enter the path to the AprilTag image: ")
     if not os.path.exists(apriltag_path):
@@ -22,22 +23,20 @@ else:
 # @title AprilTag Detection
 # @markdown Configure detection parameters and run detection on the image.
 
+# Detection parameters
 families = "tagStandard41h12"  # @param ["tag16h5", "tag25h9", "tag36h11", "tagCircle21h7", "tagCircle49h12", "tagCustom48h12", "tagStandard41h12", "tagStandard52h13"]
 tagsize_mm = 45 # @param {type:"number"}
 tagsize_meters = tagsize_mm / 1000
 
-import cv2
-import numpy as np
-from pupil_apriltags import Detector
-from scipy.spatial.transform import Rotation as R
-import matplotlib.pyplot as plt
-
+# Load the image
 image = cv2.imread(apriltag_path, cv2.IMREAD_GRAYSCALE)
 if image is None:
     raise ValueError(f"Failed to load image at {apriltag_path}")
 
+# Load camera parameters
 camera_params = np.load("camera_params.npy")
 
+# Initialize Detector
 at_detector = Detector(
     families=families,
     nthreads=1,
@@ -48,6 +47,7 @@ at_detector = Detector(
     debug=0
 )
 
+# Detect AprilTags
 detections = at_detector.detect(
     image,
     estimate_tag_pose=True,
@@ -57,6 +57,9 @@ detections = at_detector.detect(
 
 print(f"Found {len(detections)} tags")
 
+# Iterate through all tags AND:
+# Draws tag corners and ID using cv2
+# print: tag ID, center, corners, translation vector, distance from camera, orientation
 for det in detections:
     tag_id = det.tag_id
     center = det.center
@@ -84,6 +87,7 @@ for det in detections:
     else:
         print("No pose estimated (pose_t is None)")
 
+# Show annotated image
 plt.imshow(image, cmap='gray')
 plt.title("AprilTag Detection")
 plt.show()
