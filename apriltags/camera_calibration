@@ -8,11 +8,12 @@ import cv2
 from typing import List, Tuple
 import matplotlib.pyplot as plt
 
-
 test = True  # set to False if you want Colab-style manual uploads
 
 image_dir = "./checkerboard_images"
 os.makedirs(image_dir, exist_ok=True)
+
+# Downloads the zip folder of the pre-existing calibration images and unzips them to be read 
 
 def download_and_flatten_unzip(url, extract_dir):
     zip_path = os.path.join(extract_dir, "checkerboard_images.zip")
@@ -30,23 +31,9 @@ def download_and_flatten_unzip(url, extract_dir):
 if test:
     zip_url = "https://raw.githubusercontent.com/AccelerationConsortium/ac-training-lab/main/src/ac_training_lab/apriltag_demo/checkerboard_images.zip"
     download_and_flatten_unzip(zip_url, image_dir)
-# else:
-#     if 'IN_COLAB' in globals() and IN_COLAB:
-#         existing_files = os.listdir(image_dir)
-#         if existing_files:
-#             print(f"Warning: The folder {image_dir} already contains files. Uploading new files will delete all existing files.")
-#             confirm = input("Do you want to proceed? (Y/N): ").strip().lower()
-#             if confirm != "y":
-#                 print("Operation canceled. No files were uploaded.")
-#                 sys.exit()
-#         for file in existing_files:
-#             os.remove(os.path.join(image_dir, file))
-#         from google.colab import files
-#         uploaded = files.upload()
-#         for name in uploaded.keys():
-#             os.rename(name, os.path.join(image_dir, name))
 
 # Collect image paths
+
 image_paths = [
     os.path.join(image_dir, f)
     for f in sorted(os.listdir(image_dir))
@@ -58,7 +45,8 @@ for p in image_paths:
     print(p)
 
 
-# Calibration checkerboard parameters
+# Calibration checkerboard parameters from the given default image
+
 rows = 6   # inner corners in vertical direction
 cols = 9   # inner corners in horizontal direction
 square_size_mm = 23  # size of one square in mm
@@ -103,7 +91,7 @@ def calibrate_camera_from_images(
             plt.figure(figsize=(8, 6))
             plt.imshow(cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB))
             plt.axis('off')
-            plt.pause(0)
+            plt.pause(0.01)  
             plt.close()
 
 
