@@ -59,13 +59,13 @@ class URController:
         except Exception as e:
                 print("Error:", e)
 
-    def actuvate_gripper(self):
+    def activate_gripper(self):
         self.send_gripper_command("SET ACT 1")
         time.sleep(2)
 
     def gripper_position(self, pos):
         pos = max(0,min(255,pos))
-        self.send_gripper_command(f"SET POS {pos} GT01")
+        self.send_gripper_command(f"SET POS {pos} GTO1")
 
 
 
@@ -73,7 +73,7 @@ class URController:
             pos: str,
             vel: float = 1,
             acc: float = 1.4):
-        joints = self.loc[pos]["q"]
+        joints = self.loc[pos]["j"]
         if not joints or len(joints)!=6:
          raise ValueError(f"Invalid joint data for {pos}")
         
@@ -81,10 +81,8 @@ class URController:
             self.rob.movej(joints, acc=acc, vel=vel)
         except RobotException as e:
             print(f"[Warning] RobotException while moving to '{pos}': {e}")
-
-        self.rob.movej(joints,acc=acc,vel=vel)
-        self._rob_loc = pos
-
+        finally:
+            self._rob_loc = pos
     def movel(self,
             x = 0, y = 0, z = 0,
             rx = 0, ry = 0, rz = 0,
@@ -98,36 +96,47 @@ class URController:
             current_pose[4] + ry,
             current_pose[5] + rz
         ]
-        self.rob.movel(target_pose, acc=acc, vel=vel)
+        try:
+            print(f"[Debug] Executing movel to: {target_pose}")
+            self.rob.movel(target_pose, acc=acc, vel=vel)
+
+        except RobotException as e:
+            print(f"[Warning] RobotException while executing movel: {e}")
+        return False
 
     def home_h(self):
-        self.movej("home")
-        self._rob_loc = "home"
+        self.movej("home_h")
     def home_h_2_vial_rack(self):
-        if self._rob_loc !="home":
+        if self._rob_loc !="home_h":
             raise ValueError("start position should be 'home'")
     # if self._gripper_item is not None:
     #     raise ValueError("move to vial rack gripper must be None")
-        self.movej("safe_rack_vial")
-        self.movej("rack_center")
-        self._rob_loc = "rack_center"
+        self.movej("safe_rack_vial_h")
+        self.movej("rack_center_h")
+        self._rob_loc = "rack_center_h"
 
     def vial_rack_2_vial(self,release_vial:bool):
-        if self._rob_loc !="rack_center":
+        print(f"[Debug] release_vial = {release_vial}")
+        if self._rob_loc !="rack_center_h":
             raise ValueError("start position should be 'rack_center'")
         if not release_vial:
             if self._gripper_item is not None:
                 raise ValueError("move to vial rack gripper must be None")
         
             self.gripper_position(self.gripper_dist["open"]["vial"])
-            self.movej("pre_A1vial_grip")
-            self.movej("A1vial_grip")
+            print("[Debug] Opening gripper...")
+            self.movej("pre_A1vial_grip_h")
+            time.sleep(2)
+            self.movej("A1vial_grip_h")
+            time.sleep(2)
             self.gripper_position(self.gripper_dist["close"]["vial"])
+            print("[Debug] Opening gripper...")
             self.movel(z = 0.08)
-            self.movej("safe_rack_vial")
+            time.sleep(2)
+            self.movej("safe_rack_vial_h")
 
             self._gripper_item = "vial"
-            self._rob_loc = "safe_rack_vial"
+            self._rob_loc = "safe_rack_vial_h"
 
                          
 
