@@ -149,7 +149,7 @@ class MTXPRBalance:
 
 
     def __init__(self,
-                 host: str = "192.168.1.1", 
+                 host: str = "192.168.1.100",  # Default placeholder - configure in my_secrets.py 
                  port: int = 8002, 
                  api_path: str = 'MT/Laboratory/Balance/XprXsr/V03/MT', 
                  wsdl_template_name: str = DEFAULT_WSDL_TEMPLATE_NAME,
@@ -955,8 +955,13 @@ class MTXPRBalance:
 
 
 if __name__ == '__main__':
-    BALANCE_IP = "192.168.254.83"
-    BALANCE_PASSWORD = "PASSWORD"
+    try:
+        from robot import my_secrets
+    except ImportError:
+        my_secrets = None
+    
+    BALANCE_IP = getattr(my_secrets, 'BALANCE_IP', '192.168.254.83') if my_secrets else '192.168.254.83'
+    BALANCE_PASSWORD = getattr(my_secrets, 'BALANCE_PASSWORD', 'PASSWORD') if my_secrets else 'PASSWORD'
 
     # More detailed logging for debugging
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

@@ -6,10 +6,15 @@ from mt_balance import MTXPRBalanceDosingError
 from mt_balance import WeighingCaptureMode
 import time
 
-BALANCE_IP = "192.168.254.83"
-BALANCE_PASSWORD = "PASSWORD"
+try:
+    from robot import my_secrets
+except ImportError:
+    my_secrets = None
 
-balance = MTXPRBalance (host = BALANCE_IP, password = BALANCE_PASSWORD)
+balance_ip = getattr(my_secrets, 'BALANCE_IP', '192.168.254.83') if my_secrets else '192.168.254.83'
+balance_password = getattr(my_secrets, 'BALANCE_PASSWORD', 'PASSWORD') if my_secrets else 'PASSWORD'
+
+balance = MTXPRBalance(host=balance_ip, password=balance_password)
 
 # Get input from the user
 
