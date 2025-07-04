@@ -3,7 +3,10 @@ import numpy as np
 import os
 from pupil_apriltags import Detector
 from scipy.spatial.transform import Rotation as R
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.use('TkAgg')
+
 
 test = True
 from pupil_apriltags import Detector

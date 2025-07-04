@@ -1,0 +1,230 @@
+import os
+import socket
+import yaml 
+import threading
+from datetime import datetime
+from pathlib import Path
+from picamera2 import Picamera2, controls
+from time import sleep
+from sdl_utils import get_logger, send_file_name, receive_file_name, send_file_size, send_file_name, receive_file_name, receive_file_size
+
+
+""" This code will establish a server on a Pi Zero 2W allowing it to send photos to the client """
+
+# Get the yaml file containing the settings we need to establish a server connection
+
+# Path(__file__): Creates a Path object pointing to this script file
+# .resolve(): Converts it to an absolute path (e.g., /home/pi/camera_server.py)
+# .parent: Gets the directory containing the script (e.g., /home/pi).
+
+script_dir = Path(__file__).resolve().parent
+
+
+# Opening and reading the yaml file
+
+with open(script_dir / "server.settings.yaml", 'r') as f:
+
+    data = yaml.safe_load(f)
+    buffer_size = data["BufferSize"]
+    chunk_size = data["ChunkSize"]
+    server_port = data["ServerPort"]
+
+# CameraServer class that takes allows for taking a picture using the camera on Pi and sending it to the client when requested
+
+class CameraServer:
+
+    # Making the host = 0.0.0.0 allows it to accept connections from multiple different interfaces, like WiFi, Ethernet etc
+    def __init__ (self, host = "0.0.0.0", port = server_port):
+
+        self.host = host
+        self.port = port
+        self.logger = self.setup_logger()
+        self.server.ip = self.get_server_ip()
+        self.cam = self.init_cam()
+        self.camera_lock = threading.Lock() # Only allows one client to access the server at a time to prevent inteference
+
+    # Static class method which does not depend on an instance
+    # Calls the get_logger function from sdl_utils to initalize a logger called " WirelessCameraLogger"
+    @staticmethod
+    def setup_logger():
+        return get_logger("WirelessCameraLogger")
+    
+    # Allows us to obtain the IP address of the Raspberry Pi
+    def get_server_ip (self):
+
+        # Uses IPv4 as the address family and UDP as type to socket to set up a dummy connection and test if the connection works
+        with socket.socket (socket.AF_INET,socket.SOCK_DGRAM) as s_test:
+            s_test.connect ("8.8.8.8", 80) # Pings google 
+            server_ip = s_test.getsockname()[0]
+            self.logger.info (f"My IP address is: {server_ip}")
+            return server_ip
+        
+    def init_cam(self):
+        self.logger.info ("Initializing camera session")
+        cam = Picamera2(0) # Connects to the first (for our case, the only) camera module the Pi encounters
+        config = cam.create_still_configuration() # Sets a still image configuration for the camera (to take photos, not videos)
+        cam.configure(config)
+        # Checks if the camera has autofocus mode and enables it to be on continuously
+        if 'AfMode' in cam.camera_controls:
+            cam.set_controls({"AfMode": controls.AfModeEnum.Continuous})
+        cam.start()
+        self.logger.info ("Camera initiated")
+
+    # Make sure that the instance of the camera object is destroyed when camera is closed
+    def __del__(self):
+        
+        if hasattr (self, 'cam'):
+            self.cam.stop()
+            self.cam.close()
+            self.logger.info (f"Camera closed.")
+    
+    # This function will instantiate a new camera instance every time and take a photo
+
+    def take_photo (self):
+
+        try:
+
+            with self.camera_lock:
+
+                # Create output directory by getting the current working directory and creating an absolute path to a subfolder named "photos" inside the cwd
+                photo_dir = os.path.join (os.getcwd(), "photos")
+                os.makedirs (photo_dir, exist_ok = True)
+
+                # Generate filename
+                timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                filename = f"capture_{timestamp}.jpg"
+                img_path = os.path.join (photo_dir, filename)
+
+                # Camera operation
+                sleep(3)           # Wait for auto-exposure to settle
+                self.cam.capture_file (img_path)
+                self.logger.info (f"Captured {filename}")
+                return img_path
+
+        except Exception as e:
+            self.logger.error (f"Capture failed: {e}")
+            return None
+        
+    """
+    The function does a few things here: 
+        (i) Sends the file name
+        (ii) Sends the file size
+        (iii) Confirms the file name 
+        (iv) Confirms the file size
+        (v) Sends the file
+       
+        Parameters used here are as follows:
+        (i) param conn: Socket connection object connection between the server and client
+        (ii) param img_path: Absolute image path on the server
+
+    """
+
+    def send_photo (self, conn, img_path):
+
+    # Read the entire file into memory:
+        with open(img_path, 'rb') as f:
+            image_data = f.read()
+            img_size = len (image_data)
+            img_name = os.path.basename (img_path)
+
+    # Send the file name
+        send_file_name (conn, img_name, self.logger)
+        self.logger.info (f"Sent file name {img_name}.")
+
+    # Confirm echoed filename (that the file was received by the client and a confirmation was sent back)
+        echo_name = receive_file_name (conn, self.logger)
+        if not echo_name:
+            self.logger.error ("Failed to receive echoed image name from client.")
+            return False
+        elif echo_name != img_name:
+            self.logger.error ("File name mismatch! Aborting transfer.")
+            return False
+        else:
+            self.logger.info (f"Client confirmed image name {img_name}.")
+
+    # Send size
+        send_file_size (conn, img_size, self.logger)
+        self.logger.info (f"Sent file size {img_size} to client.")
+
+    # Confirm echoed size
+        echoed_size_str = receive_file_size(conn, self.logger)
+        if not echoed_size_str:
+            self.logger.error ("Failed to receive echoed size from client (connection closed).")
+            return False
+        try:
+            echoed_size = int (echoed_size_str)
+            if echoed_size != img_size:
+                self.logger.error ("File size mismatch! Aborting transfer.")
+                return False
+            else:
+                self.logger.info ("File size confirmed. Proceeding with file transfer.")
+        except ValueError:
+            self.logger.error (f"Invalid size echoed: '{echoed_size_str}'.")
+            return False
+
+    # Send the file data in chunks
+        offset = 0
+        while offset < img_size:
+            end = offset + chunk_size
+            chunk = image_data[offset:end]
+            conn.sendall(chunk)
+            offset = end
+        self.logger.info("File transfer complete.")
+        self.logger.info("Waiting for new command...")
+
+
+# Handle client connection in a thread-safe manner
+
+    def handle_client (self, conn):
+        try:
+            while True:
+                msg = conn.recv(buffer_size).decode('utf-8').strip()
+                if not msg:
+                    break
+                self.logger.info(f"Received message: {msg}.")
+
+                if msg == "TAKE_PHOTO":
+                    image_path = self.take_photo()
+                    if image_path:
+                        self.send_photo(conn, image_path)
+                else:
+                    self.logger.info (f"Unknown command received: {msg}. Closing connection.")
+                    break  # Unknown command; exit loop
+
+        except Exception as e:
+            self.logger.error(f"Handle client error: {e}.")
+        finally:
+            conn.close()
+            self.logger.info("Client connection closed.")
+            self.logger.info("Waiting for new connection.")
+
+    # Startsthe server witrh clean error handling
+    def start_server(self):
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.setsockopt (socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        try:
+            server.bind((self.server_ip, self.port))
+            server.listen(5)
+            self.logger.info(f"Server started on {self.server_ip}:{self.port}.")
+            self.logger.info("Waiting for connection...")
+
+            while True:
+                conn, addr = server.accept()
+                self.logger.info(f"Connected with address: {addr}.")
+                threading.Thread(
+                    target=self.handle_client,
+                    args=(conn,),
+                    daemon=True
+                ).start()
+
+        except KeyboardInterrupt:
+            self.logger.info("Server shutdown requested.")
+        finally:
+            server.close()
+            self.logger.info("Server socket closed.")
+
+
+if __name__ == "__main__":
+    camera = CameraServer()
+    camera.start_server()
