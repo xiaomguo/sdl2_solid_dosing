@@ -23,7 +23,7 @@ script_dir = Path(__file__).resolve().parent
 
 # Opening and reading the yaml file
 
-with open(script_dir / "server.settings.yaml", 'r') as f:
+with open(script_dir / "server_settings.yaml", 'r') as f:
 
     data = yaml.safe_load(f)
     buffer_size = data["BufferSize"]
@@ -40,10 +40,10 @@ class CameraServer:
         self.host = host
         self.port = port
         self.logger = self.setup_logger()
-        self.server.ip = self.get_server_ip()
+        self.server_ip = self.get_server_ip()
         self.cam = self.init_cam()
         self.camera_lock = threading.Lock() # Only allows one client to access the server at a time to prevent inteference
-
+       
     # Static class method which does not depend on an instance
     # Calls the get_logger function from sdl_utils to initalize a logger called " WirelessCameraLogger"
     @staticmethod
@@ -55,7 +55,7 @@ class CameraServer:
 
         # Uses IPv4 as the address family and UDP as type to socket to set up a dummy connection and test if the connection works
         with socket.socket (socket.AF_INET,socket.SOCK_DGRAM) as s_test:
-            s_test.connect ("8.8.8.8", 80) # Pings google 
+            s_test.connect (("8.8.8.8", 80)) # Pings google 
             server_ip = s_test.getsockname()[0]
             self.logger.info (f"My IP address is: {server_ip}")
             return server_ip
@@ -70,7 +70,7 @@ class CameraServer:
             cam.set_controls({"AfMode": controls.AfModeEnum.Continuous})
         cam.start()
         self.logger.info ("Camera initiated")
-
+        return cam
     # Make sure that the instance of the camera object is destroyed when camera is closed
     def __del__(self):
         
