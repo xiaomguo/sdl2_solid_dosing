@@ -6,22 +6,32 @@ from scipy.spatial.transform import Rotation as R
 import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.use('TkAgg')
-
-
-test = True
 from pupil_apriltags import Detector
 
-# Download test image
-if test:
-    import urllib.request
-    apriltag_url = "https://raw.githubusercontent.com/AccelerationConsortium/ac-training-lab/main/src/ac_training_lab/apriltag_demo/apriltag_test.jpg"
-    apriltag_path = "apriltag_test.jpg"
-    urllib.request.urlretrieve(apriltag_url, apriltag_path)
-else:
-    apriltag_path = input("Enter the path to the AprilTag image: ")
-    if not os.path.exists(apriltag_path):
-        raise ValueError(f"File {apriltag_path} does not exist.")
-    apriltag_path = os.path.abspath(apriltag_path)
+# Download most recent image
+
+# Finds the newest file in the given directory, returns the full path to the latest file, raises an error if there are no files.
+
+def get_latest_image(directory):
+    
+    # Create a list of full paths to all files in the directory
+    files = []
+    for f in os.listdir(directory):
+        path = os.path.join(directory, f)
+        if os.path.isfile(path):
+            files.append(path)
+
+    # If there are no files, raise an error
+    if not files:
+        raise ValueError(f"No images found in {directory}")
+
+    # Return the file with the most recent creation time
+    latest_file = max(files, key=os.path.getctime)
+    return latest_file
+
+# Use the function to find the newest image in "Detection_Photos" folder
+apriltag_path = get_latest_image("Detection_Photos")
+print(f"Using latest image: {apriltag_path}")
 
 # @title AprilTag Detection
 # @markdown Configure detection parameters and run detection on the image.
