@@ -4,7 +4,8 @@ import yaml
 import threading
 from datetime import datetime
 from pathlib import Path
-from picamera2 import Picamera2, controls
+from picamera2 import Picamera2
+from libcamera import controls
 from time import sleep
 from sdl_utils import get_logger, send_file_name, receive_file_name, send_file_size, send_file_name, receive_file_name, receive_file_size
 
