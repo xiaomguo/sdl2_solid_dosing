@@ -8,7 +8,7 @@ import cv2
 from typing import List, Tuple
 import matplotlib.pyplot as plt
 
-test = True  # set to False if you want Colab-style manual uploads
+test = False  # set to False if you want Colab-style manual uploads
 
 image_dir = "./checkerboard_images"
 os.makedirs(image_dir, exist_ok=True)
@@ -47,9 +47,9 @@ for p in image_paths:
 
 # Calibration checkerboard parameters from the given default image
 
-rows = 6   # inner corners in vertical direction
-cols = 9   # inner corners in horizontal direction
-square_size_mm = 23  # size of one square in mm
+rows = 5   # inner corners in vertical direction
+cols = 8   # inner corners in horizontal direction
+square_size_mm = 13  # size of one square in mm
 
 def calibrate_camera_from_images(
     image_paths: List[str],

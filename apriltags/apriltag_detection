@@ -4,6 +4,7 @@ import os
 from pupil_apriltags import Detector
 from scipy.spatial.transform import Rotation as R
 import matplotlib
+
 import matplotlib.pyplot as plt
 matplotlib.use('TkAgg')
 
@@ -37,7 +38,7 @@ print(f"Using latest image: {apriltag_path}")
 
 # Detection parameters
 families = "tagStandard41h12"  # @param ["tag16h5", "tag25h9", "tag36h11", "tagCircle21h7", "tagCircle49h12", "tagCustom48h12", "tagStandard41h12", "tagStandard52h13"]
-tagsize_mm = 45 # @param {type:"number"}
+tagsize_mm = 13 # @param {type:"number"}
 tagsize_meters = tagsize_mm / 1000
 
 # Load the image
