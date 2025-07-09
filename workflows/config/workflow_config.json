@@ -1,0 +1,26 @@
+{
+  "balance": {
+    "ip": "192.168.254.83",
+    "password": "PASSWORD"
+  },
+  "robot": {
+    "ip": "192.168.254.19",
+    "gripper_port": 63352
+  },
+  "waypoints": {
+    "vial_pickup": [0.5, -0.3, 0.2, 0, 3.14, 0],
+    "vial_place_balance": [0.3, 0.1, 0.15, 0, 3.14, 0],
+    "dosing_head_pickup": [0.6, -0.4, 0.25, 0, 3.14, 0],
+    "dosing_head_place": [0.3, 0.1, 0.2, 0, 3.14, 0],
+    "home_position": [0.0, -0.5, 0.4, 0, 3.14, 0]
+  },
+  "dosing": {
+    "substance_name": "NaCl",
+    "target_amount_mg": 0.5,
+    "wait_time_seconds": 2.0
+  },
+  "safety": {
+    "max_weight_g": 10.0,
+    "timeout_seconds": 30
+  }
+} 
