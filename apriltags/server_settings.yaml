@@ -1,0 +1,13 @@
+# These are the parameters needed to establish a server
+
+# When the server calls conn.recv(), it will read up to 2048 bytes at a time from the client.
+# This controls how much data the server reads per recv() call when it’s waiting for commands or data from the client.
+BufferSize : 2048
+
+# When sending an image file, the server reads the file into memory and sends it in chunks of 1024 bytes.
+# This means each conn.sendall() sends 1024 bytes or less until the whole file is transmitted.
+ChunkSize : 1024
+
+# The TCP port the server will bind to when it starts listening for connections.
+# Clients will connect to the Raspberry Pi’s IP on port 2222 to issue commands and receive photos
+ServerPort : 2222

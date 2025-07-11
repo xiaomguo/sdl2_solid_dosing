@@ -1,0 +1,145 @@
+import os
+import sys
+import zipfile
+import urllib.request
+import shutil
+import numpy as np
+import cv2
+from typing import List, Tuple
+import matplotlib.pyplot as plt
+
+test = False  # set to False if you want Colab-style manual uploads
+
+image_dir = "./checkerboard_images"
+os.makedirs(image_dir, exist_ok=True)
+
+# Downloads the zip folder of the pre-existing calibration images and unzips them to be read 
+
+def download_and_flatten_unzip(url, extract_dir):
+    zip_path = os.path.join(extract_dir, "checkerboard_images.zip")
+    urllib.request.urlretrieve(url, zip_path)
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        for member in zip_ref.namelist():
+            filename = os.path.basename(member)
+            if not filename:
+                continue
+            source = zip_ref.open(member)
+            target_path = os.path.join(extract_dir, filename)
+            with open(target_path, "wb") as target:
+                shutil.copyfileobj(source, target)
+
+if test:
+    zip_url = "https://raw.githubusercontent.com/AccelerationConsortium/ac-training-lab/main/src/ac_training_lab/apriltag_demo/checkerboard_images.zip"
+    download_and_flatten_unzip(zip_url, image_dir)
+
+# Collect image paths
+
+image_paths = [
+    os.path.join(image_dir, f)
+    for f in sorted(os.listdir(image_dir))
+    if f.lower().endswith(('.jpg', '.png'))
+]
+
+print("\nFound images:")
+for p in image_paths:
+    print(p)
+
+
+# Calibration checkerboard parameters from the given default image
+
+rows = 5   # inner corners in vertical direction
+cols = 8   # inner corners in horizontal direction
+square_size_mm = 13  # size of one square in mm
+
+def calibrate_camera_from_images(
+    image_paths: List[str],
+    rows: int,
+    cols: int,
+    square_size: float,
+    show_detections: bool = False,
+    save_path: str = None
+) -> Tuple[np.ndarray, Tuple[float, float, float, float]]:
+    pattern_size = (cols, rows) if rows < cols else (rows, cols)
+
+    # Create object points grid
+    x = np.arange(pattern_size[0]) * square_size
+    y = np.arange(pattern_size[1]) * square_size
+    xgrid, ygrid = np.meshgrid(x, y)
+    zgrid = np.zeros_like(xgrid)
+    opoints = np.dstack((xgrid, ygrid, zgrid)).reshape((-1, 1, 3)).astype(np.float32)
+
+    imagesize = None
+    ipoints = []
+
+    for filename in image_paths:
+        rgb = cv2.imread(filename)
+        if rgb is None:
+            print(f'Error loading {filename}, skipping.')
+            continue
+
+        if imagesize is None:
+            imagesize = (rgb.shape[1], rgb.shape[0])
+        else:
+            assert imagesize == (rgb.shape[1], rgb.shape[0]), "Inconsistent image sizes."
+
+        gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY) if len(rgb.shape) == 3 else rgb
+        found, corners = cv2.findChessboardCorners(gray, pattern_size)
+
+        if show_detections:
+            display_img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+            cv2.drawChessboardCorners(display_img, pattern_size, corners, found)
+            plt.figure(figsize=(8, 6))
+            plt.imshow(cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB))
+            plt.axis('off')
+            plt.pause(0.01)  
+            plt.close()
+
+
+        if found:
+            ipoints.append(corners)
+        else:
+            print(f'No corners found in {filename}, skipping.')
+
+    if len(ipoints) < 1:
+        raise ValueError("No valid images with detected corners found.")
+
+    flags = (cv2.CALIB_ZERO_TANGENT_DIST |
+             cv2.CALIB_FIX_K1 |
+             cv2.CALIB_FIX_K2 |
+             cv2.CALIB_FIX_K3 |
+             cv2.CALIB_FIX_K4 |
+             cv2.CALIB_FIX_K5 |
+             cv2.CALIB_FIX_K6)
+
+    retval, K, dcoeffs, rvecs, tvecs = cv2.calibrateCamera(
+        [opoints] * len(ipoints),
+        ipoints,
+        imagesize,
+        cameraMatrix=None,
+        distCoeffs=np.zeros(5),
+        flags=flags
+    )
+
+    fx, fy, cx, cy = K[0,0], K[1,1], K[0,2], K[1,2]
+    if save_path:
+        np.save(save_path, np.array([fx, fy, cx, cy]))
+        print(f'Saved camera parameters to {save_path}')
+
+    print("\nCamera intrinsics (units: pixels):")
+    print(f"  fx = {fx:.3f}")
+    print(f"  fy = {fy:.3f}")
+    print(f"  cx = {cx:.3f}")
+    print(f"  cy = {cy:.3f}")
+    print(f"\nPython copy-paste: fx, fy, cx, cy = {(fx, fy, cx, cy)}")
+
+    return K, (fx, fy, cx, cy)
+
+# Run calibration
+K, (fx, fy, cx, cy) = calibrate_camera_from_images(
+    image_paths=image_paths,
+    rows=rows,
+    cols=cols,
+    square_size=square_size_mm,
+    show_detections=True,
+    save_path="./camera_params.npy"
+)
