@@ -5,7 +5,7 @@ import threading
 from datetime import datetime
 from pathlib import Path
 from picamera2 import Picamera2
-from libcamera import controls
+from libcamera import controls, Transform
 from time import sleep
 from sdl_utils import get_logger, send_file_name, receive_file_name, send_file_size, send_file_name, receive_file_name, receive_file_size
 
@@ -63,11 +63,11 @@ class CameraServer:
     def init_cam(self):
         self.logger.info ("Initializing camera session")
         cam = Picamera2(0) # Connects to the first (for our case, the only) camera module the Pi encounters
-        config = cam.create_still_configuration() # Sets a still image configuration for the camera (to take photos, not videos)
+        config = cam.create_still_configuration(transform = Transform(hflip = 1,vflip = 1)) # Sets a still image configuration for the camera (to take photos, not videos)
         cam.configure(config)
         # Checks if the camera has autofocus mode and enables it to be on continuously
         if 'AfMode' in cam.camera_controls:
-            cam.set_controls({"AfMode": controls.AfModeEnum.Continuous})
+            cam.set_controls({"AfMode": controls.AfModeEnum.Manual, "LensPosition": 100})
         cam.start()
         self.logger.info ("Camera initiated")
         return cam
