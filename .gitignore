@@ -56,3 +56,9 @@ venv*/
 .python-version
 
 robot/my_secrets.py
+
+# Calibration output
+camera_params.npy
+
+# Detection photos
+apriltags/camera_calibration/*.jpg

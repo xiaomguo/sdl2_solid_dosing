@@ -1,0 +1,107 @@
+import cv2
+import numpy as np
+import os
+from pupil_apriltags import Detector
+from scipy.spatial.transform import Rotation as R
+import matplotlib
+
+import matplotlib.pyplot as plt
+matplotlib.use('TkAgg')
+
+# Download most recent image
+
+# Finds the newest file in the given directory, returns the full path to the latest file, raises an error if there are no files.
+
+def get_latest_image(directory):
+    
+    # Create a list of full paths to all files in the directory
+    files = []
+    for f in os.listdir(directory):
+        path = os.path.join(directory, f)
+        if os.path.isfile(path):
+            files.append(path)
+
+    # If there are no files, raise an error
+    if not files:
+        raise ValueError(f"No images found in {directory}")
+
+    # Return the file with the most recent creation time
+    latest_file = max(files, key=os.path.getctime)
+    return latest_file
+
+# Use the function to find the newest image in "Detection_Photos" folder
+apriltag_path = get_latest_image("Detection_Photos")
+print(f"Using latest image: {apriltag_path}")
+
+# @title AprilTag Detection
+# @markdown Configure detection parameters and run detection on the image.
+
+# Detection parameters
+families = "tagStandard41h12"  # @param ["tag16h5", "tag25h9", "tag36h11", "tagCircle21h7", "tagCircle49h12", "tagCustom48h12", "tagStandard41h12", "tagStandard52h13"]
+tagsize_mm = 13 # @param {type:"number"}
+tagsize_meters = tagsize_mm / 1000
+
+# Load the image
+image = cv2.imread(apriltag_path, cv2.IMREAD_GRAYSCALE)
+if image is None:
+    raise ValueError(f"Failed to load image at {apriltag_path}")
+
+# Load camera parameters
+camera_params = np.load("camera_params.npy")
+
+# Initialize Detector
+at_detector = Detector(
+    families=families,
+    nthreads=1,
+    quad_decimate=1.0,
+    quad_sigma=0.0,
+    refine_edges=1,
+    decode_sharpening=0.25,
+    debug=0
+)
+
+# Detect AprilTags
+detections = at_detector.detect(
+    image,
+    estimate_tag_pose=True,
+    camera_params=camera_params,
+    tag_size=tagsize_meters
+)
+
+print(f"Found {len(detections)} tags")
+
+# Iterate through all tags AND:
+# Draws tag corners and ID using cv2
+# print: tag ID, center, corners, translation vector, distance from camera, orientation
+for det in detections:
+    tag_id = det.tag_id
+    center = det.center
+    corners = det.corners.astype(int)
+
+    cv2.polylines(image, [corners], True, 255, 2)
+    cx, cy = map(int, center)
+    cv2.circle(image, (cx, cy), 4, 255, -1)
+    cv2.putText(image, str(tag_id), (cx, cy - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255, 1)
+
+    print(f"\nTag ID: {tag_id}")
+    print(f"  Center: {center}")
+    print(f"  Corners: {det.corners}")
+
+    if det.pose_t is not None:
+        t = det.pose_t.flatten()
+        print(f"  Translation (x, y, z): {t}")
+
+        distance_cm = np.linalg.norm(t) * 100
+        print(f"  Distance from camera: {distance_cm:.2f} centimeters")
+
+        euler = R.from_matrix(det.pose_R).as_euler('xyz', degrees=True)
+        roll, pitch, yaw = euler
+        print(f"  Roll: {roll:.2f}°, Pitch: {pitch:.2f}°, Yaw: {yaw:.2f}°")
+    else:
+        print("No pose estimated (pose_t is None)")
+
+# Show annotated image
+plt.imshow(image, cmap='gray')
+plt.title("AprilTag Detection")
+plt.show()
+

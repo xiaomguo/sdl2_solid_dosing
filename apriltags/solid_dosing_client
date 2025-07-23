@@ -1,0 +1,113 @@
+import os
+import socket
+from pathlib import Path
+from time import sleep
+from dotenv import load_dotenv
+from sdl_utils import get_logger
+from sdl_utils import connect_socket, send_file_name, receive_file_name, send_file_size, receive_file_size, receive_file
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Get settings from environment variables
+
+server_ip = os.getenv ("SERVER_IP", "172.31.34.231")
+server_port = int (os.getenv ("SERVER_PORT", 2222))
+buffer_size = int (os.getenv ("BUFFER_SIZE", 2048))
+chunk_size = int (os.getenv ("CHUNK_SIZE", 1024))
+path_tesseract = os.getenv ("PATH_TESSERACT")
+
+# This class implements a client that connects to a server to receive photos
+class PhotoClient:
+ 
+    def __init__(self, host = "0.0.0.0", port = server_port, logger = None):
+        self.host = host
+        self.port = port
+        self.server_ip = server_ip
+        self.logger = self.setup_logger()
+
+    # Create the logger and file handler
+    @staticmethod
+    def setup_logger():
+        logger = get_logger ("PhotoClientLogger")
+        return logger
+
+    # Run this code to update the server IP address the first time you set up the server or when its IP address changes
+   
+    def update_server_ip (self):
+       
+        ip_up_to_date = input (f"Is the server IP address: {self.server_ip}? [Y]: ")
+        while True:
+            if ip_up_to_date in ['', 'y', 'Y', 'yes', 'Yes']:
+                break
+            elif ip_up_to_date in ['n', 'N', 'No', 'no']:
+                new_server_ip = input("What is the new ip address")
+                self.logger.info(f"IP address updated to {new_server_ip}")
+                self.server_ip = new_server_ip
+                break
+
+    # Receives a photo file from the server over a socket connection
+    # Saves the photo to the specified directory and returns the path of the saved photo
+    def receive_photo (self, sock):
+    
+        # Create the photos directory if it does not exist already
+        output_dir = "Detection_Photos"
+        os.makedirs (output_dir, exist_ok = True)
+        
+        # Receive the image name and echo back to confirm
+        img_name = receive_file_name (sock, self.logger)
+        self.logger.info (f"Server sent file name {img_name}.")
+        send_file_name (sock, img_name, self.logger)
+        self.logger.info ("Echoed the file name back to server.")
+        img_path = os.path.join (output_dir, img_name)
+
+        # Receive ASCII-based file size and echo back to confirm
+        file_size = receive_file_size (sock, self.logger)
+        self.logger.info (f"Server sent file size: {file_size} bytes.")
+        send_file_size (sock, file_size, self.logger)
+        self.logger.info ("Echoed the file size back to server.")
+
+        # Now receive the actual file data in chunks, and write the file to disk
+        received_data = receive_file (sock, file_size, chunk_size, self.logger)
+        with open (img_path, "wb") as f:
+            f.write (received_data)
+        self.logger.info (f"File {img_name} saved to: {output_dir}")
+        return True, img_path
+
+    def interactive_client_session (self):
+        with socket.socket (socket.AF_INET, socket.SOCK_STREAM) as s:
+            s = connect_socket (s, server_ip, server_port, self.logger)
+            if s == None:
+                return
+            while True:
+                print ("Options:\n1. Request photo\n2. Exit")
+                option = input("Enter your choice: ").strip()
+
+                if option == "1":
+                    try:
+                        s.sendall ("TAKE_PHOTO".encode ('utf-8'))
+                        sleep(5)
+
+                        success, image_path = self.receive_photo(s)
+                        if success:
+                            self.logger.info (f"Photo received and saved as {image_path}")
+                        else:
+                            self.logger.info ("Failed to receive complete photo")
+                        continue
+                    except Exception as e:
+                        print (f"Error during photo request: {e}")
+
+                elif option == "2":
+                    self.logger.info ('Exiting')
+                    s.close()
+                    break
+                else:
+                    print("Invalid option. Please try again.")
+
+
+if __name__ == "__main__":
+    client = PhotoClient()
+    
+    # Please confirm that you have the right server IP address
+    client.update_server_ip()
+    client.interactive_client_session()
