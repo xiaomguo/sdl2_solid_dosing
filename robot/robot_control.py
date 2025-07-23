@@ -11,6 +11,7 @@ from urx.urrobot import RobotException
 # print(pos)
 
 class URController:
+    
     def __init__(self,
                  ur_ip = "192.168.254.19",
                  gripper_port = 63352,
@@ -34,9 +35,11 @@ class URController:
             "open":{"vial": 214, "dose": 165},
             "close":{"vial": 244, "dose": 178}
         }
-        # set TCP position
+
+        # set TCP (Tool Centre Point) position. It's 0.195m away from the robot flange (last joint) in the Z direction for this case
         tcp_pose = [0.0, 0.0, 0.195, 0.0, 0.0, 0.0 ]
         self.rob.set_tcp(tcp_pose)
+
         # set payload
         weight = 0.82
         center_of_gravity = (-0.006, 0.002, 0.065)
@@ -49,9 +52,11 @@ class URController:
         """Send a command to the gripper and print the response."""
         
         try:
+            # Creates a TCP/IP socket, AF_INET = IPv4 and SOCK_STREAM = TCP (not UDP)
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(10)
                 s.connect((self.gripper_ip, self.gripper_port))
+                # Encode command as UTF-8 bytes with newline, then send entire message to gripper over TCP
                 s.sendall(command.encode('utf-8') + b'\n')
                 data = s.recv(1024)
                 print(f"Sent: {command}")
@@ -67,8 +72,6 @@ class URController:
         pos = max(0,min(255,pos))
         self.send_gripper_command(f"SET POS {pos} GTO1")
 
-
-
     def movej(self,
             pos: str,
             vel: float = 1,
@@ -83,6 +86,7 @@ class URController:
             print(f"[Warning] RobotException while moving to '{pos}': {e}")
         finally:
             self._rob_loc = pos
+
     def movel(self,
             x = 0, y = 0, z = 0,
             rx = 0, ry = 0, rz = 0,
@@ -106,6 +110,7 @@ class URController:
 
     def home_h(self):
         self.movej("home_h")
+
     def home_h_2_vial_rack(self):
         if self._rob_loc !="home_h":
             raise ValueError("start position should be 'home'")
@@ -138,7 +143,11 @@ class URController:
             self._gripper_item = "vial"
             self._rob_loc = "safe_rack_vial_h"
 
-                         
+# Using the robot using the class URController
+
+rob = URController()
+rob.home_h()
+#rob.movel(z =0.05)                  
 
 
 #define robot positions

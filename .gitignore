@@ -61,4 +61,4 @@ robot/my_secrets.py
 camera_params.npy
 
 # Detection photos
-apriltags/camera_calibration/*.jpg
+apriltags/Detection_Photos/*.jpg
